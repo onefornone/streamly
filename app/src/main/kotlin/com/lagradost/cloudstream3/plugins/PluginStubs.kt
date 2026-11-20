@@ -9,7 +9,7 @@ import android.content.res.Resources
  * workaround (android/.../cloudstream/CloudStreamPluginBase.kt). The package name MUST stay identical.
  */
 abstract class Plugin : BasePlugin() {
-    companion object { const val `$stable`: Int = 8 }   // Compose-compiled plugins read this
+    // No hand-written `$stable` here: the Compose compiler plugin generates it on this class, and a second one is a JVM clash.
     open fun load(context: Context) { load() }          // real Plugin.load(Context) delegates to load()
     var resources: Resources? = null
     var needsResources: Boolean = false
