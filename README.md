@@ -12,6 +12,9 @@
 Plugin lists carry a `fileHash` (sha256); installs and updates are checked against it. Installed versions are remembered, so loading a
 repository again flags newer versions and offers one-tap Update. There is no 'install everything' button on purpose.
 
+## Toolchain (needed by the CloudStream library v4.8.0)
+AGP 8.11.1, Kotlin 2.2.20, Gradle 8.14, compileSdk 36 - copied from a project known to build against this library.
+
 ## Built-in source
 `sources/ArchiveProvider.kt` (Internet Archive films/TV) is registered at startup, so Home has content with zero plugins.
 
