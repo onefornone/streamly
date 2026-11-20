@@ -1,0 +1,47 @@
+name: Build APK
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:        # lets you press "Run workflow" by hand
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: android-actions/setup-android@v3      # Android SDK + accepts licenses
+
+      - uses: gradle/actions/setup-gradle@v4        # installs Gradle itself, so no gradle-wrapper.jar is needed
+        with:
+          gradle-version: 8.10.2
+
+      - name: Write local.properties (optional TMDB key from a repo secret)
+        env:
+          TMDB_KEY: ${{ secrets.TMDB_KEY }}
+        run: echo "TMDB_KEY=${TMDB_KEY}" > local.properties
+
+      - name: Build debug APK
+        run: |
+          set -o pipefail
+          gradle assembleDebug --stacktrace 2>&1 | tee build.log
+
+      - name: Upload build log (always, so errors can be read)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: streamly-debug-apk
+          path: app/build/outputs/apk/debug/*.apk

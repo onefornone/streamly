@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Plugin settings sheets are built on Material Components + AppCompat, so the host activity needs this theme.
+         Translucent so the app stays visible behind the plugin's bottom sheet / dialog. -->
+    <style name="Theme.PluginSettings" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:backgroundDimEnabled">false</item>
+    </style>
+</resources>
