@@ -15,9 +15,14 @@ data class Ep(val label: String, val season: Int, val number: Int?, val data: St
 object ProviderHost {
     fun providers(): List<MainAPI> = APIHolder.allProviders.toList()
 
-    suspend fun home(api: MainAPI): List<HomePageList> {
-        val req = api.mainPage.firstOrNull() ?: return emptyList()
-        return api.getMainPage(1, req)?.items.orEmpty()
+    /** Every home row a source offers (capped), fetched in parallel; a slow or failing row is skipped, not fatal. */
+    suspend fun home(api: MainAPI): List<HomePageList> = coroutineScope {
+        api.mainPage.take(10).map { mp ->
+            async {
+                runCatching { withTimeout(20_000) { api.getMainPage(1, MainPageRequest(mp.name, mp.data, false))?.items.orEmpty() } }
+                    .getOrDefault(emptyList())
+            }
+        }.awaitAll().flatten()
     }
 
     suspend fun search(api: MainAPI, query: String): List<SearchResponse> = api.search(query) ?: emptyList()

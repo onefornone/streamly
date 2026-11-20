@@ -4,7 +4,11 @@ import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.ExtractorLinkType
 import com.lagradost.cloudstream3.utils.newExtractorLink
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
 import java.net.URLEncoder
 
 /**
@@ -27,10 +31,17 @@ class ArchiveProvider : MainAPI() {
 
     private fun enc(s: String) = URLEncoder.encode(s, "UTF-8")
 
+    // Plain HTTP on purpose: this built-in source needs nothing from the plugin runtime.
+    private suspend fun httpGet(url: String): String = withContext(Dispatchers.IO) {
+        val c = URL(url).openConnection() as HttpURLConnection
+        c.connectTimeout = 15_000; c.readTimeout = 20_000; c.setRequestProperty("User-Agent", "Streamly/1.0")
+        try { c.inputStream.bufferedReader().readText() } finally { c.disconnect() }
+    }
+
     private suspend fun fetch(q: String, page: Int): List<SearchResponse> {
         val url = "$mainUrl/advancedsearch.php?q=${enc("($q) AND mediatype:movies")}" +
             "&fl[]=identifier&fl[]=title&rows=50&page=$page&sort[]=${enc("downloads desc")}&output=json"
-        val docs = JSONObject(app.get(url).text).optJSONObject("response")?.optJSONArray("docs") ?: return emptyList()
+        val docs = JSONObject(httpGet(url)).optJSONObject("response")?.optJSONArray("docs") ?: return emptyList()
         return (0 until docs.length()).mapNotNull { i ->
             val d = docs.getJSONObject(i)
             val id = d.optString("identifier").ifBlank { return@mapNotNull null }
@@ -50,7 +61,7 @@ class ArchiveProvider : MainAPI() {
 
     override suspend fun load(url: String): LoadResponse {
         val id = url.trimEnd('/').substringAfterLast('/')
-        val meta = JSONObject(app.get("$mainUrl/metadata/$id").text).optJSONObject("metadata")
+        val meta = JSONObject(httpGet("$mainUrl/metadata/$id")).optJSONObject("metadata")
         val title = meta?.optString("title")?.takeIf { it.isNotBlank() } ?: id
         return newMovieLoadResponse(title, url, TvType.Movie, id) {
             posterUrl = "$mainUrl/services/img/$id"
@@ -63,7 +74,7 @@ class ArchiveProvider : MainAPI() {
         data: String, isCasting: Boolean,
         subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit,
     ): Boolean {
-        val files = JSONObject(app.get("$mainUrl/metadata/$data").text).optJSONArray("files") ?: return false
+        val files = JSONObject(httpGet("$mainUrl/metadata/$data")).optJSONArray("files") ?: return false
         val mp4s = (0 until files.length()).map { files.getJSONObject(it) }
             .filter { it.optString("name").endsWith(".mp4", true) }
             // h.264 derivatives play everywhere; the original upload may be any codec, so it goes later.
